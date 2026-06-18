@@ -64,7 +64,14 @@ public class Parser {
         String content = json.trim();
         if (!content.startsWith("{") || !content.endsWith("}"))
             throw new IllegalArgumentException("Not a valid JSON object");
-        content = content.substring(1, content.length() - 1).trim();
+
+        // --- 强制对象内部必须换行 ---
+        String inner = content.substring(1, content.length() - 1).trim();
+        if (!inner.contains("\n")) {
+            throw new IllegalArgumentException("JSON object must span multiple lines (each key-value pair on a new line)");
+        }
+
+        // Extract command name and parameters
         Pattern keyPattern = Pattern.compile("\"([^\"]*)\"\\s*:\\s*(.*)");
         Matcher m = keyPattern.matcher(content);
         if (!m.matches()) throw new IllegalArgumentException("Cannot parse command name");
@@ -74,7 +81,7 @@ public class Parser {
         return new Command(commandName, params);
     }
 
-    // ========== Strict JSON parsing (must separate objects by newline) ==========
+    // ========== Strict JSON parsing (objects must be separated by newline) ==========
     private List<Command> parseCommands(String script) {
         List<Command> commands = new ArrayList<>();
         int len = script.length();
@@ -82,7 +89,6 @@ public class Parser {
         boolean first = true;
         while (i < len) {
             // Skip spaces/tabs
-            int startI = i;
             while (i < len && (script.charAt(i) == ' ' || script.charAt(i) == '\t')) i++;
             if (i < len && script.charAt(i) == '\n') {
                 i++;
