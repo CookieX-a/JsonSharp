@@ -1,3 +1,6 @@
+# Contents
+## [en-us](https://github.com/CookieX-a/JSharpScript/edit/main/README.md#j---json-script-language)
+## [zh-cn](https://github.com/CookieX-a/JSharpScript/edit/main/README.md#j---json-%E8%84%9A%E6%9C%AC%E8%AF%AD%E8%A8%80)
 # J# - JSON Script Language
 
 J# is a JSON-driven scripting language. It executes **standard JSON objects** as commands, supporting variables, arithmetic, conditions, loops, functions, modules, file I/O, arrays, strings, math, networking, time, type conversion, Base64, regular expressions, and more. It features a built-in REPL and multi-project parallel execution.
@@ -69,6 +72,17 @@ java JSharp
 ```bash
 java JSharp -version
 ```
+
+### Or use a Jar file
+Windows(bat):
+```bat
+java -jar "%~dp0jsharp.jar" %*
+```
+Linux/macOS(bash)
+```bash
+java -jar "$(dirname "$0")/jsharp.jar" "$@"
+```
+
 
 ---
 
@@ -177,6 +191,16 @@ java JSharp
 ### 显示版本信息
 ```bash
 java JSharp -version
+```
+
+### 或者使用Jar
+Windows(bat):
+```bat
+java -jar "%~dp0jsharp.jar" %*
+```
+Linux/macOS(bash)
+```bash
+java -jar "$(dirname "$0")/jsharp.jar" "$@"
 ```
 
 ---
