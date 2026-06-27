@@ -1,12 +1,26 @@
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipEntry;
+import java.util.Properties;
+import java.util.Enumeration;
 
 public class Parser {
     private Map<String, FuncDef> functions = new HashMap<>();
     private Map<String, List<Command>> rawProjects = new LinkedHashMap<>();
     private int condCounter = 0;
     private Map<String, ConditionExpansion> whileCondMap = new HashMap<>();
+    private String libDir = "lib";
+
+    public void setLibDir(String dir) {
+        this.libDir = dir;
+    }
 
     private static class ConditionExpansion {
         List<Command> setupCommands = new ArrayList<>();
@@ -43,6 +57,30 @@ public class Parser {
             rawProjects.put(name, rawCommands);
         }
 
+        // Process import statements
+        for (String projName : rawProjects.keySet()) {
+            List<Command> commands = rawProjects.get(projName);
+            List<Command> filtered = new ArrayList<>();
+            for (Command cmd : commands) {
+                if (cmd.getName().equals("import")) {
+                    String libName = cmd.getParams().get("name");
+                    String libFile = cmd.getParams().get("file");
+                    if (libName != null) {
+                        libFile = libName + ".jsharplib";
+                    }
+                    if (libFile != null) {
+                        loadLibrary(libFile);
+                    } else {
+                        System.err.println("Warning: import missing 'name' or 'file' parameter");
+                    }
+                } else {
+                    filtered.add(cmd);
+                }
+            }
+            rawProjects.put(projName, filtered);
+        }
+
+        // Expand expressions and sugar
         for (Map.Entry<String, List<Command>> entry : rawProjects.entrySet()) {
             String name = entry.getKey();
             List<Command> preprocessed = preprocessExpressions(entry.getValue());
@@ -55,6 +93,70 @@ public class Parser {
         return projects;
     }
 
+    // ========== Library loading (ZIP only) ==========
+    private void loadLibrary(String libFile) {
+        Path libPath = Path.of(libDir, libFile);
+        if (!Files.exists(libPath)) {
+            System.err.println("Error: library not found: " + libPath);
+            return;
+        }
+        if (!libFile.toLowerCase().endsWith(".jsharplib")) {
+            System.err.println("Error: library must be a .jsharplib file");
+            return;
+        }
+        try {
+            loadZipLibrary(libPath);
+        } catch (Exception e) {
+            System.err.println("Error loading library " + libPath + ": " + e.getMessage());
+        }
+    }
+
+    private void loadZipLibrary(Path zipPath) throws IOException {
+        ZipFile zip = new ZipFile(zipPath.toFile());
+        ZipEntry configEntry = zip.getEntry("config.properties");
+        if (configEntry == null) {
+            zip.close();
+            throw new IOException("config.properties not found in ZIP library");
+        }
+        Properties props = new Properties();
+        try (InputStream in = zip.getInputStream(configEntry)) {
+            props.load(in);
+        }
+        // Extract all files to lib directory
+        Enumeration<? extends ZipEntry> entries = zip.entries();
+        while (entries.hasMoreElements()) {
+            ZipEntry entry = entries.nextElement();
+            if (entry.isDirectory()) continue;
+            Path outPath = Path.of(libDir, entry.getName());
+            Files.createDirectories(outPath.getParent());
+            try (InputStream ein = zip.getInputStream(entry)) {
+                Files.copy(ein, outPath, StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+        zip.close();
+
+        // Register functions from config
+        for (String key : props.stringPropertyNames()) {
+            if (!key.endsWith(".command")) continue;
+            String funcName = key.substring(0, key.length() - ".command".length());
+            String commandTemplate = props.getProperty(key);
+            List<String> paramNames = new ArrayList<>();
+            Matcher m = Pattern.compile("\\$\\{?(\\w+)\\}?").matcher(commandTemplate);
+            while (m.find()) {
+                String p = m.group(1);
+                if (!paramNames.contains(p)) paramNames.add(p);
+            }
+            String processedCmd = commandTemplate.replaceAll("\\$\\{(\\w+)\\}", "\\$$1");
+            List<Command> funcBody = new ArrayList<>();
+            Map<String, String> execParams = new LinkedHashMap<>();
+            execParams.put("cmd", processedCmd);
+            execParams.put("result", "$return");
+            funcBody.add(new Command("exec", execParams));
+            functions.put(funcName, new FuncDef(paramNames, funcBody));
+            System.out.println("Registered external function: " + funcName + " -> " + commandTemplate);
+        }
+    }
+
     // ========== Public method for REPL ==========
     public Command parseJsonCommand(String json) {
         return parseJsonCommandInternal(json);
@@ -65,13 +167,12 @@ public class Parser {
         if (!content.startsWith("{") || !content.endsWith("}"))
             throw new IllegalArgumentException("Not a valid JSON object");
 
-        // --- 强制对象内部必须换行 ---
+        // Force multiline inside object
         String inner = content.substring(1, content.length() - 1).trim();
         if (!inner.contains("\n")) {
             throw new IllegalArgumentException("JSON object must span multiple lines (each key-value pair on a new line)");
         }
 
-        // Extract command name and parameters
         Pattern keyPattern = Pattern.compile("\"([^\"]*)\"\\s*:\\s*(.*)");
         Matcher m = keyPattern.matcher(content);
         if (!m.matches()) throw new IllegalArgumentException("Cannot parse command name");
@@ -81,14 +182,13 @@ public class Parser {
         return new Command(commandName, params);
     }
 
-    // ========== Strict JSON parsing (objects must be separated by newline) ==========
+    // ========== Strict JSON parsing (objects separated by newline) ==========
     private List<Command> parseCommands(String script) {
         List<Command> commands = new ArrayList<>();
         int len = script.length();
         int i = 0;
         boolean first = true;
         while (i < len) {
-            // Skip spaces/tabs
             while (i < len && (script.charAt(i) == ' ' || script.charAt(i) == '\t')) i++;
             if (i < len && script.charAt(i) == '\n') {
                 i++;
@@ -102,7 +202,6 @@ public class Parser {
 
             if (i >= len) break;
 
-            // Must start with {
             if (script.charAt(i) != '{') {
                 int line = 1;
                 for (int k = 0; k < i; k++) if (script.charAt(k) == '\n') line++;

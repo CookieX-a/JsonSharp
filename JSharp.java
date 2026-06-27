@@ -7,9 +7,20 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class JSharp {
-    public static final String VERSION = "1.0";
+    public static final String VERSION = "1.0.0";
 
     public static void main(String[] args) {
+        // Ensure lib directory exists
+        Path libPath = Path.of("lib");
+        if (!Files.exists(libPath)) {
+            try {
+                Files.createDirectory(libPath);
+                System.out.println("Created library directory: " + libPath.toAbsolutePath());
+            } catch (IOException e) {
+                System.err.println("Warning: could not create lib directory: " + e.getMessage());
+            }
+        }
+
         if (args.length >= 1 && (args[0].equals("-version") || args[0].equals("--version"))) {
             printVersion();
             return;
@@ -31,6 +42,7 @@ public class JSharp {
         try {
             String script = Files.readString(Path.of(filePath));
             Parser parser = new Parser();
+            parser.setLibDir("lib");
             Map<String, List<Command>> projects = parser.parseProjects(script);
 
             if (projects.isEmpty()) {
@@ -66,7 +78,7 @@ public class JSharp {
     }
 
     private static void printVersion() {
-        String buildDate = "2026-06-14";
+        String buildDate = "2026-06-19";
         String buildNumber = "1";
         String javaVersion = System.getProperty("java.version");
         String osName = System.getProperty("os.name");
@@ -79,7 +91,6 @@ public class JSharp {
         System.out.println("(powered by Java " + javaVersion + ")");
     }
 
-    // ==================== REPL ====================
     private static void repl() {
         System.out.println("J# REPL (type 'exit' to quit, supports multiline JSON)");
         Scanner scanner = new Scanner(System.in);

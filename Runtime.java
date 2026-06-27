@@ -147,14 +147,55 @@ public class Runtime {
             case "regex_find":    handleRegexFind(cmd.getParams());    return ip + 1;
             case "regex_replace": handleRegexReplace(cmd.getParams()); return ip + 1;
             case "sleep":         handleSleep(cmd.getParams());        return ip + 1;
+            case "exec":          handleExec(cmd.getParams());         return ip + 1;
             default:
                 output.append("Warning: Unknown command ").append(cmd.getName()).append(" (line ").append(cmd.getLine()).append(")\n");
                 return ip + 1;
         }
     }
 
-    // ========== Command handlers (all English now) ==========
+    // ========== exec handler ==========
+    private void handleExec(Map<String, String> params) {
+        String cmdStr = getValue(params, "cmd");
+        String resultVar = params.get("result");
+        if (cmdStr == null || resultVar == null) {
+            output.append("Error: exec requires 'cmd' and 'result' parameters\n");
+            return;
+        }
+        List<String> tokens = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+        boolean inQuote = false;
+        for (char c : cmdStr.toCharArray()) {
+            if (c == '"') {
+                inQuote = !inQuote;
+            } else if (c == ' ' && !inQuote) {
+                if (sb.length() > 0) {
+                    tokens.add(sb.toString());
+                    sb.setLength(0);
+                }
+            } else {
+                sb.append(c);
+            }
+        }
+        if (sb.length() > 0) tokens.add(sb.toString());
+        if (tokens.isEmpty()) {
+            output.append("Error: exec command is empty\n");
+            return;
+        }
+        ProcessBuilder pb = new ProcessBuilder(tokens);
+        pb.redirectErrorStream(true);
+        try {
+            Process process = pb.start();
+            String result = new String(process.getInputStream().readAllBytes());
+            int exitCode = process.waitFor();
+            env.put(resultVar, result.stripTrailing());
+            output.append("[EXEC] ").append(cmdStr).append(" -> exit ").append(exitCode).append("\n");
+        } catch (Exception e) {
+            output.append("Error: exec failed - ").append(e.getMessage()).append("\n");
+        }
+    }
 
+    // ========== sleep handler ==========
     private void handleSleep(Map<String, String> params) {
         String millisStr = params.get("millis");
         if (millisStr == null) millisStr = params.get("ms");
@@ -172,6 +213,7 @@ public class Runtime {
         }
     }
 
+    // ========== Type conversion handlers ==========
     private void handleConvInt(Map<String, String> params) {
         String val = getValue(params, "value");
         String resultVar = params.get("result");
@@ -209,6 +251,7 @@ public class Runtime {
         }
     }
 
+    // ========== Base64 handlers ==========
     private void handleBase64Encode(Map<String, String> params) {
         String val = getValue(params, "value");
         String resultVar = params.get("result");
@@ -234,6 +277,7 @@ public class Runtime {
         }
     }
 
+    // ========== Regex handlers ==========
     private void handleRegexMatch(Map<String, String> params) {
         String str = getValue(params, "str");
         String pattern = params.get("pattern");
@@ -274,6 +318,7 @@ public class Runtime {
         }
     }
 
+    // ========== Math handlers ==========
     private void handleMathUnary(Map<String, String> params, java.util.function.DoubleUnaryOperator op) {
         String value = getValue(params, "value");
         String resultVar = params.get("result");
@@ -315,6 +360,7 @@ public class Runtime {
         }
     }
 
+    // ========== HTTP handlers ==========
     private void handleHttpGet(Map<String, String> params) {
         String url = getValue(params, "url");
         String resultVar = params.get("result");
@@ -363,6 +409,7 @@ public class Runtime {
         }
     }
 
+    // ========== Time handler ==========
     private void handleTimeNow(Map<String, String> params) {
         String resultVar = params.get("result");
         if (resultVar != null) {
@@ -373,6 +420,7 @@ public class Runtime {
         }
     }
 
+    // ========== String handlers ==========
     private void handleStrLen(Map<String, String> params) {
         String str = getValue(params, "str");
         String resultVar = params.get("result");
@@ -482,7 +530,7 @@ public class Runtime {
         }
     }
 
-    // --- Expression evaluator ---
+    // ========== Expression evaluator ==========
     private String evaluateExpression(String expr) {
         if (expr == null) return null;
         String resolved = resolveVariables(expr);
@@ -549,6 +597,7 @@ public class Runtime {
         }.parse();
     }
 
+    // ========== Core handlers ==========
     private void handleSet(Map<String, String> params) {
         String name = params.get("name");
         String raw = params.get("value");
@@ -666,6 +715,7 @@ public class Runtime {
         return idx;
     }
 
+    // ========== List handlers ==========
     private void handleListCreate(Map<String, String> params) {
         String name = params.get("name");
         if (name != null) { lists.put(name, new ArrayList<>()); output.append("[LIST] created ").append(name).append("\n"); }

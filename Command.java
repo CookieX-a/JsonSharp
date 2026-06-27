@@ -3,12 +3,10 @@ import java.util.Map;
 public class Command {
     private String name;
     private Map<String, String> params;
-    private int line; // 脚本中的大致行号，用于错误提示
+    private int line;
 
     public Command(String name, Map<String, String> params) {
-        this.name = name;
-        this.params = params;
-        this.line = -1;
+        this(name, params, -1);
     }
 
     public Command(String name, Map<String, String> params, int line) {
@@ -24,6 +22,6 @@ public class Command {
 
     @Override
     public String toString() {
-        return "{" + name + " " + params + "}" + (line > 0 ? " (行" + line + ")" : "");
+        return "{\"" + name + "\": " + params + "}" + (line > 0 ? " (line " + line + ")" : "");
     }
 }
