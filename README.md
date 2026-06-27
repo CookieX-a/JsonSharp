@@ -91,18 +91,53 @@ java -jar "$(dirname "$0")/jsharp.jar" "$@"
 Create a file `hello.jsharp`:
 
 ```json
-{"project": {"name": "Demo", "file": "./demo.txt"}}
+{"project": {
+    "name": "Demo",
+    "file": "./demo.txt"
+}}
 
-{"set": {"name": "x", "value": 10}}
-{"set": {"name": "y", "value": 5}}
-{"set": {"name": "z", "value": "$x + $y * 2"}}
-{"print": {"type": "text", "text": "Result: $z"}}
+{"set": {
+    "name": "x",
+    "value": 10
+}}
 
-{"if": {"cond": "$z > 15", "id": "check"}}
-{"print": {"type": "text", "text": "z is greater than 15"}}
-{"else": {"id": "check"}}
-{"print": {"type": "text", "text": "z is not greater than 15"}}
-{"endif": {"id": "check"}}
+{"set": {
+    "name": "y",
+    "value": 5
+}}
+
+{"set": {
+    "name": "z",
+    "value": "$x + $y * 2"
+}}
+
+{"print": {
+    "type": "text",
+    "text": "Result: $z"
+}}
+
+{"if": {
+    "cond": "$z > 15",
+    "id": "check"
+}}
+
+{"print": {
+    "type": "text",
+    "text": "z is greater than 15"
+}}
+
+{"else": {
+    "id": "check"
+}}
+
+{"print": {
+    "type": "text",
+    "text": "z is not greater than 15"
+}}
+
+{"endif": {
+    "id": "check"
+}}
 ```
 
 Run it:
@@ -210,18 +245,53 @@ java -jar "$(dirname "$0")/jsharp.jar" "$@"
 创建文件 `hello.jsharp`：
 
 ```json
-{"project": {"name": "Demo", "file": "./demo.txt"}}
+{"project": {
+    "name": "Demo",
+    "file": "./demo.txt"
+}}
 
-{"set": {"name": "x", "value": 10}}
-{"set": {"name": "y", "value": 5}}
-{"set": {"name": "z", "value": "$x + $y * 2"}}
-{"print": {"type": "text", "text": "结果: $z"}}
+{"set": {
+    "name": "x",
+    "value": 10
+}}
 
-{"if": {"cond": "$z > 15", "id": "check"}}
-{"print": {"type": "text", "text": "z 大于 15"}}
-{"else": {"id": "check"}}
-{"print": {"type": "text", "text": "z 不大于 15"}}
-{"endif": {"id": "check"}}
+{"set": {
+    "name": "y",
+    "value": 5
+}}
+
+{"set": {
+    "name": "z",
+    "value": "$x + $y * 2"
+}}
+
+{"print": {
+    "type": "text",
+    "text": "Result: $z"
+}}
+
+{"if": {
+    "cond": "$z > 15",
+    "id": "check"
+}}
+
+{"print": {
+    "type": "text",
+    "text": "z is greater than 15"
+}}
+
+{"else": {
+    "id": "check"
+}}
+
+{"print": {
+    "type": "text",
+    "text": "z is not greater than 15"
+}}
+
+{"endif": {
+    "id": "check"
+}}
 ```
 
 运行：
